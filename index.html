@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Progress Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --bg: #f7f6f3;
+  --surface: #ffffff;
+  --surface2: #f0efe9;
+  --border: rgba(0,0,0,0.09);
+  --border2: rgba(0,0,0,0.16);
+  --text: #1a1a18;
+  --muted: #6b6a65;
+  --hint: #9e9c97;
+  --accent: #185FA5;
+  --accent-light: #e6f1fb;
+  --green: #3B6D11;
+  --green-light: #eaf3de;
+  --red: #A32D2D;
+  --red-light: #fcebeb;
+  --amber: #854F0B;
+  --amber-light: #faeeda;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1a1a18;
+    --surface: #242422;
+    --surface2: #2e2e2b;
+    --border: rgba(255,255,255,0.09);
+    --border2: rgba(255,255,255,0.16);
+    --text: #f0efe9;
+    --muted: #9e9c97;
+    --hint: #6b6a65;
+    --accent: #5BA3E8;
+    --accent-light: #0c2a45;
+    --green: #7fc44a;
+    --green-light: #1a2e0a;
+    --red: #e87070;
+    --red-light: #2e0a0a;
+    --amber: #f0a030;
+    --amber-light: #2e1a04;
+  }
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:15px;line-height:1.5;min-height:100vh}
+a{color:var(--accent)}
+
+/* Layout */
+.app-header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100}
+.app-title{font-size:17px;font-weight:600;letter-spacing:-.01em}
+.app-title span{color:var(--accent)}
+.main{max-width:900px;margin:0 auto;padding:1.5rem 1rem 4rem}
+
+/* Nav */
+.nav{display:flex;gap:4px;background:var(--surface2);border-radius:var(--radius);padding:4px;margin-bottom:1.5rem;overflow-x:auto}
+.nav-btn{flex:1;min-width:80px;padding:7px 10px;border:none;border-radius:var(--radius-sm);background:transparent;cursor:pointer;font-size:13px;font-weight:500;color:var(--muted);white-space:nowrap;transition:background .15s,color .15s}
+.nav-btn.active{background:var(--surface);color:var(--text);box-shadow:var(--shadow)}
+.nav-btn svg{display:block;margin:0 auto 3px;width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* Cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;margin-bottom:1rem}
+.card-title{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:1rem}
+
+/* Metric grid */
+.metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:1.25rem}
+.metric{background:var(--surface2);border-radius:var(--radius-sm);padding:.875rem 1rem}
+.metric-label{font-size:12px;color:var(--muted);margin-bottom:3px}
+.metric-value{font-size:24px;font-weight:600;line-height:1.1}
+.metric-unit{font-size:14px;font-weight:400;color:var(--muted)}
+.metric-delta{font-size:12px;margin-top:4px}
+
+/* Measurement rows */
+.meas-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:7px}
+.mrow{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--surface2);border-radius:var(--radius-sm)}
+.mrow-name{font-size:13px;color:var(--muted)}
+.mrow-right{text-align:right}
+.mrow-val{font-size:14px;font-weight:600}
+.mrow-deltas{font-size:11px;display:flex;gap:6px;justify-content:flex-end;margin-top:2px}
+
+/* Delta colors */
+.good{color:var(--green)}
+.bad{color:var(--red)}
+.neu{color:var(--hint)}
+
+/* Form */
+.form-section{margin-bottom:1.25rem}
+.form-section-title{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:.6rem}
+.fields-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:.5rem}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:12px;color:var(--muted)}
+.field input,.field select{height:36px;font-size:14px;padding:0 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text);outline:none;transition:border-color .15s}
+.field input:focus,.field select:focus{border-color:var(--accent)}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:1rem}
+.btn{padding:0 18px;height:36px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:var(--surface2);cursor:pointer;font-size:13px;font-weight:500;color:var(--text);transition:background .15s}
+.btn:hover{background:var(--border)}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-primary:hover{opacity:.9}
+
+/* Chart */
+.chart-wrap{position:relative;height:260px;margin-top:.5rem}
+
+/* History */
+.entry-list{display:flex;flex-direction:column;gap:6px}
+.entry-row{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--surface2);border-radius:var(--radius-sm)}
+.entry-date{font-size:13px;font-weight:600;min-width:84px;padding-top:1px}
+.entry-tags{flex:1;display:flex;flex-wrap:wrap;gap:5px}
+.tag{background:var(--surface);border:1px solid var(--border);padding:2px 8px;border-radius:4px;font-size:11px;color:var(--muted)}
+.del-btn{background:none;border:none;cursor:pointer;color:var(--hint);font-size:18px;line-height:1;padding:0 2px;flex-shrink:0}
+.del-btn:hover{color:var(--red)}
+
+/* Badges */
+.badge{display:inline-block;font-size:10px;font-weight:600;padding:1px 7px;border-radius:4px;vertical-align:middle;margin-left:5px}
+.badge-start{background:var(--accent-light);color:var(--accent)}
+.badge-ok{background:var(--green-light);color:var(--green)}
+.badge-warn{background:var(--amber-light);color:var(--amber)}
+
+/* Empty state */
+.empty{text-align:center;padding:3rem 1rem;color:var(--muted)}
+.empty svg{width:40px;height:40px;stroke:var(--hint);fill:none;stroke-width:1.5;margin:0 auto 12px;display:block}
+
+/* Banner */
+.banner{padding:10px 14px;border-radius:var(--radius-sm);font-size:13px;margin-bottom:1rem}
+.banner-info{background:var(--accent-light);color:var(--accent)}
+.banner-success{background:var(--green-light);color:var(--green)}
+
+/* Photo section */
+.photo-upload-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0}
+.upload-slot{border:1.5px dashed var(--border2);border-radius:var(--radius);aspect-ratio:3/4;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;position:relative;overflow:hidden;background:var(--surface2);transition:border-color .15s}
+.upload-slot:hover{border-color:var(--accent)}
+.upload-slot img{width:100%;height:100%;object-fit:cover;border-radius:var(--radius)}
+.upload-slot .slot-label{font-size:11px;color:var(--muted);margin-top:6px}
+.upload-slot .slot-icon{font-size:26px;color:var(--hint)}
+.remove-btn{position:absolute;top:5px;right:5px;background:var(--surface);border:1px solid var(--border);border-radius:50%;width:24px;height:24px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;color:var(--muted);z-index:2}
+.remove-btn:hover{color:var(--red)}
+
+/* Photo comparison */
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:1.5rem}
+.compare-col-title{font-size:12px;font-weight:600;text-align:center;color:var(--muted);margin-bottom:8px}
+.photo-trio{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.photo-trio img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:var(--radius-sm);display:block}
+.photo-trio-label{font-size:10px;color:var(--hint);text-align:center;margin-top:3px}
+.no-photo-slot{width:100%;aspect-ratio:3/4;background:var(--surface2);border:1px dashed var(--border2);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;color:var(--hint);font-size:11px}
+
+/* Timeline */
+.tl-item{display:flex;gap:12px;align-items:center;padding:10px 12px;background:var(--surface2);border-radius:var(--radius-sm);margin-bottom:6px}
+.tl-item.tl-start{border:1.5px solid var(--accent);background:var(--accent-light)}
+.tl-thumbs{display:flex;gap:4px}
+.tl-thumb{width:34px;height:45px;object-fit:cover;border-radius:4px}
+.tl-thumb-empty{width:34px;height:45px;background:var(--border);border-radius:4px}
+.tl-info{flex:1}
+.tl-date{font-size:14px;font-weight:600}
+.tl-sub{font-size:11px;color:var(--muted);margin-top:2px}
+
+/* Tab sub-nav */
+.sub-tabs{display:flex;gap:6px;margin-bottom:1rem;flex-wrap:wrap}
+.sub-tab{padding:5px 14px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:transparent;cursor:pointer;font-size:13px;color:var(--muted)}
+.sub-tab.active{background:var(--surface);color:var(--text);border-color:var(--border2);box-shadow:var(--shadow)}
+
+.section-note{font-size:13px;color:var(--muted);margin-bottom:1rem;line-height:1.5}
+.divider{border:none;border-top:1px solid var(--border);margin:1.25rem 0}
+
+@media(max-width:500px){
+  .compare-grid{grid-template-columns:1fr}
+  .metric-grid{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="app-title">My <span>Progress</span> Tracker</div>
+  <div style="font-size:12px;color:var(--muted)" id="header-date"></div>
+</header>
+
+<main class="main">
+  <nav class="nav" role="navigation" aria-label="Main sections">
+    <button class="nav-btn active" onclick="showPage('dashboard')" id="nav-dashboard">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </button>
+    <button class="nav-btn" onclick="showPage('stats')" id="nav-stats">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Log stats
+    </button>
+    <button class="nav-btn" onclick="showPage('photos')" id="nav-photos">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      Photos
+    </button>
+    <button class="nav-btn" onclick="showPage('charts')" id="nav-charts">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      Charts
+    </button>
+    <button class="nav-btn" onclick="showPage('history')" id="nav-history">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      History
+    </button>
+  </nav>
+
+  <div id="page-dashboard"></div>
+  <div id="page-stats" style="display:none"></div>
+  <div id="page-photos" style="display:none"></div>
+  <div id="page-charts" style="display:none"></div>
+  <div id="page-history" style="display:none"></div>
+</main>
+
+<!-- Hidden file inputs -->
+<input type="file" id="file-front" accept="image/*" style="display:none">
+<input type="file" id="file-side" accept="image/*" style="display:none">
+<input type="file" id="file-back" accept="image/*" style="display:none">
+
+<script>
+const START_DATE = '2026-06-08';
+const START_ENTRY = {
+  date:'2026-06-08',
+  weight:112.0, bodyFat:39.7, leanMass:71.9, bmi:39.2, skelMuscle:40.6, boneMass:5.7, bodyWater:44.0,
+  chest:131.6, stomach:130.0, waist:123.7, seat:120.9,
+  leftBicep:39.8, rightBicep:37.6, leftForearm:32.1, rightForearm:31.9,
+  leftThigh:61.6, rightThigh:62.7, leftCalf:42.0, rightCalf:42.4,
+  surfaceArea:2.1
+};
+
+const FIELDS = [
+  {key:'weight',label:'Weight',unit:'kg',cat:'body',goodDown:true},
+  {key:'bodyFat',label:'Body fat',unit:'%',cat:'body',goodDown:true},
+  {key:'leanMass',label:'Lean body mass',unit:'kg',cat:'body',goodDown:false},
+  {key:'bmi',label:'BMI',unit:'',cat:'body',goodDown:true},
+  {key:'skelMuscle',label:'Skeletal muscle',unit:'kg',cat:'body',goodDown:false},
+  {key:'boneMass',label:'Bone mass',unit:'kg',cat:'body',goodDown:false},
+  {key:'bodyWater',label:'Body water',unit:'%',cat:'body',goodDown:false},
+  {key:'chest',label:'Chest',unit:'cm',cat:'measure',goodDown:true},
+  {key:'stomach',label:'Stomach',unit:'cm',cat:'measure',goodDown:true},
+  {key:'waist',label:'Waist',unit:'cm',cat:'measure',goodDown:true},
+  {key:'seat',label:'Seat',unit:'cm',cat:'measure',goodDown:true},
+  {key:'leftBicep',label:'Left bicep',unit:'cm',cat:'measure',goodDown:false},
+  {key:'rightBicep',label:'Right bicep',unit:'cm',cat:'measure',goodDown:false},
+  {key:'leftForearm',label:'Left forearm',unit:'cm',cat:'measure',goodDown:false},
+  {key:'rightForearm',label:'Right forearm',unit:'cm',cat:'measure',goodDown:false},
+  {key:'leftThigh',label:'Left thigh',unit:'cm',cat:'measure',goodDown:false},
+  {key:'rightThigh',label:'Right thigh',unit:'cm',cat:'measure',goodDown:false},
+  {key:'leftCalf',label:'Left calf',unit:'cm',cat:'measure',goodDown:false},
+  {key:'rightCalf',label:'Right calf',unit:'cm',cat:'measure',goodDown:false},
+  {key:'surfaceArea',label:'Surface area',unit:'m²',cat:'measure',goodDown:false},
+];
+
+let entries = [];
+let photoSets = [];
+let pendingPhotos = {front:null,side:null,back:null};
+let pendingPhotoDate = '';
+let currentPage = 'dashboard';
+let chartInst = null;
+
+// ─── Storage ───────────────────────────────────────────────
+function saveEntries(){ localStorage.setItem('pt_entries', JSON.stringify(entries)); }
+function savePhotos(){ 
+  try { localStorage.setItem('pt_photos', JSON.stringify(photoSets)); } 
+  catch(e){ alert('Photo storage full — try clearing old photo sets.'); }
+}
+function loadAll(){
+  try { const r = localStorage.getItem('pt_entries'); if(r) entries=JSON.parse(r); } catch(e){}
+  try { const r = localStorage.getItem('pt_photos'); if(r) photoSets=JSON.parse(r); } catch(e){}
+  const exists = entries.find(e=>e.date===START_ENTRY.date);
+  if(!exists){ entries.unshift(START_ENTRY); saveEntries(); }
+}
+
+// ─── Helpers ───────────────────────────────────────────────
+function sorted(){ return [...entries].sort((a,b)=>a.date.localeCompare(b.date)); }
+function sortedPhotos(){ return [...photoSets].sort((a,b)=>a.date.localeCompare(b.date)); }
+function weekNum(dateStr){
+  const d = new Date(dateStr), s = new Date(START_DATE);
+  return Math.floor((d-s)/(7*24*60*60*1000))+1;
+}
+function isPhotoWeek(dateStr){ const w=weekNum(dateStr); return w===1||w%4===1; }
+function today(){ return new Date().toISOString().slice(0,10); }
+function fmtDate(d){ return new Date(d+'T12:00:00').toLocaleDateString('en-ZA',{day:'numeric',month:'short',year:'numeric'}); }
+
+function delta(cur, ref, f){
+  if(cur==null||ref==null) return '';
+  const d = +(cur-ref).toFixed(2);
+  if(d===0) return `<span class="neu">—</span>`;
+  const sign = d>0?'+':'';
+  const good = f.goodDown ? d<0 : d>0;
+  return `<span class="${good?'good':'bad'}">${sign}${d}${f.unit}</span>`;
+}
+
+// ─── Navigation ────────────────────────────────────────────
+function showPage(p){
+  currentPage = p;
+  ['dashboard','stats','photos','charts','history'].forEach(id=>{
+    document.getElementById('page-'+id).style.display = id===p?'':'none';
+    document.getElementById('nav-'+id).classList.toggle('active',id===p);
+  });
+  render();
+}
+
+function render(){
+  if(currentPage==='dashboard') renderDashboard();
+  else if(currentPage==='stats') renderStats();
+  else if(currentPage==='photos') renderPhotos();
+  else if(currentPage==='charts') renderCharts();
+  else if(currentPage==='history') renderHistory();
+}
+
+// ─── Dashboard ─────────────────────────────────────────────
+function renderDashboard(){
+  const s = sorted();
+  const first = s[0];
+  const latest = s[s.length-1];
+  const prev = s.length>1 ? s[s.length-2] : null;
+  const isOnly = latest===first;
+  const sp = sortedPhotos();
+  const latestPhoto = sp.length ? sp[sp.length-1] : null;
+
+  let html = '';
+  if(isOnly){
+    html += `<div class="banner banner-info">Welcome! Your baseline from ${fmtDate(START_DATE)} is loaded. Log your first weekly check-in using <strong>Log stats</strong>.</div>`;
+  }
+
+  // Key metrics
+  html += `<div class="card"><div class="card-title">Current stats</div><div class="metric-grid">`;
+  const keyFields = ['weight','bodyFat','leanMass','waist'];
+  for(const k of keyFields){
+    const f = FIELDS.find(f=>f.key===k);
+    const v = latest[k]; const fv = first[k];
+    if(v==null) continue;
+    const d = +(v-fv).toFixed(2);
+    const sign=d>0?'+':''; const good=f.goodDown?d<0:d>0;
+    html += `<div class="metric">
+      <div class="metric-label">${f.label}</div>
+      <div class="metric-value">${v}<span class="metric-unit"> ${f.unit}</span></div>
+      <div class="metric-delta ${d===0?'neu':good?'good':'bad'}">${d===0?'no change':(sign+d.toFixed(1)+f.unit+' from start')}</div>
+    </div>`;
+  }
+  html += `</div></div>`;
+
+  // All measurements
+  html += `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+    <div class="card-title" style="margin:0">All measurements</div>
+    ${prev&&!isOnly?`<span style="font-size:11px;color:var(--hint)">vs prev week &nbsp;·&nbsp; vs start</span>`:''}
+  </div><div class="meas-grid">`;
+  for(const f of FIELDS){
+    const v=latest[f.key]; if(v==null) continue;
+    const fv=first[f.key], pv=prev?prev[f.key]:null;
+    html += `<div class="mrow">
+      <div class="mrow-name">${f.label}</div>
+      <div class="mrow-right">
+        <div class="mrow-val">${v}${f.unit?'&thinsp;'+f.unit:''}</div>
+        <div class="mrow-deltas">
+          ${prev&&!isOnly?delta(v,pv,f):''}
+          ${!isOnly?`<span class="neu">·</span>${delta(v,fv,f)}`:''}
+        </div>
+      </div>
+    </div>`;
+  }
+  html += `</div></div>`;
+
+  // Latest photo preview
+  if(latestPhoto){
+    html += `<div class="card"><div class="card-title">Latest photos · ${fmtDate(latestPhoto.date)}</div>
+    <div class="photo-trio">`;
+    ['front','side','back'].forEach(angle=>{
+      html += `<div><img src="${latestPhoto[angle]||''}" alt="${angle}" style="${!latestPhoto[angle]?'display:none':''}">
+      ${!latestPhoto[angle]?`<div class="no-photo-slot" style="aspect-ratio:3/4">—</div>`:''}
+      <div class="photo-trio-label">${angle}</div></div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  document.getElementById('page-dashboard').innerHTML = html;
+}
+
+// ─── Log stats ─────────────────────────────────────────────
+function renderStats(){
+  let html = `<div class="card"><div class="card-title">Add weekly entry</div>
+  <div class="form-section">
+    <div class="fields-grid" style="grid-template-columns:200px">
+      <div class="field"><label>Date</label><input type="date" id="inp-date" value="${today()}"></div>
+    </div>
+  </div>
+  <div class="form-section">
+    <div class="form-section-title">Body composition</div>
+    <div class="fields-grid">`;
+  for(const f of FIELDS.filter(f=>f.cat==='body')){
+    html += `<div class="field"><label>${f.label}${f.unit?' ('+f.unit+')':''}</label><input type="number" id="inp-${f.key}" step="0.1" placeholder="${START_ENTRY[f.key]??''}"></div>`;
+  }
+  html += `</div></div>
+  <div class="form-section">
+    <div class="form-section-title">Measurements (cm)</div>
+    <div class="fields-grid">`;
+  for(const f of FIELDS.filter(f=>f.cat==='measure')){
+    html += `<div class="field"><label>${f.label}</label><input type="number" id="inp-${f.key}" step="0.1" placeholder="${START_ENTRY[f.key]??''}"></div>`;
+  }
+  html += `</div></div>
+  <div class="btn-row">
+    <button class="btn btn-primary" onclick="saveEntry()">Save entry</button>
+    <button class="btn" onclick="clearStatsForm()">Clear</button>
+  </div></div>`;
+  document.getElementById('page-stats').innerHTML = html;
+}
+
+function clearStatsForm(){ FIELDS.forEach(f=>{ const el=document.getElementById('inp-'+f.key); if(el) el.value=''; }); }
+
+function saveEntry(){
+  const date = document.getElementById('inp-date').value;
+  if(!date){ alert('Please pick a date.'); return; }
+  const entry={date}; let hasVal=false;
+  for(const f of FIELDS){
+    const el=document.getElementById('inp-'+f.key);
+    if(el&&el.value!==''){entry[f.key]=parseFloat(el.value);hasVal=true;}
+  }
+  if(!hasVal){ alert('Please enter at least one value.'); return; }
+  const idx=entries.findIndex(e=>e.date===date);
+  if(idx>=0) entries[idx]={...entries[idx],...entry}; else entries.push(entry);
+  saveEntries();
+  alert('Entry saved!');
+  showPage('dashboard');
+}
+
+// ─── Photos ────────────────────────────────────────────────
+function renderPhotos(){
+  const sp = sortedPhotos();
+  // show sub-tabs: compare / add / timeline
+  const subTab = window._photoTab || 'compare';
+  let html = `<div class="sub-tabs">
+    <button class="sub-tab ${subTab==='compare'?'active':''}" onclick="setPhotoTab('compare')">Compare</button>
+    <button class="sub-tab ${subTab==='add'?'active':''}" onclick="setPhotoTab('add')">Add photos</button>
+    <button class="sub-tab ${subTab==='timeline'?'active':''}" onclick="setPhotoTab('timeline')">Timeline</button>
+  </div>`;
+
+  if(subTab==='compare'){
+    if(!sp.length){
+      html += `<div class="empty"><svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>No photo sets yet. Add your first set using the Add photos tab.</div>`;
+    } else {
+      const first = sp[0];
+      const latest = sp[sp.length-1];
+      const prev = sp.length>1 ? sp[sp.length-2] : null;
+      const isOnly = latest.date===first.date;
+
+      function trio(set, label){
+        if(!set) return `<div style="color:var(--muted);font-size:13px;padding:1rem 0;text-align:center">No set yet</div>`;
+        return `<div>
+          <div class="compare-col-title">${label}<br><span style="font-size:10px">${fmtDate(set.date)} · week ${weekNum(set.date)}</span></div>
+          <div class="photo-trio">
+            ${['front','side','back'].map(a=>`<div>
+              ${set[a]?`<img src="${set[a]}" alt="${a}">`:`<div class="no-photo-slot">—</div>`}
+              <div class="photo-trio-label">${a}</div>
+            </div>`).join('')}
+          </div>
+        </div>`;
+      }
+
+      if(isOnly){
+        html += `<div class="banner banner-info">This is your baseline. Add more sets every 4 weeks to see comparisons.</div>`;
+        html += `<div class="card">${trio(first,'Start (baseline)')}</div>`;
+      } else {
+        html += `<div class="card"><div class="card-title">Latest vs start</div>
+          <div class="compare-grid">${trio(latest,'Latest')}${trio(first,'Start')}</div>`;
+        if(prev){
+          html += `<hr class="divider"><div class="card-title" style="margin-bottom:1rem">Latest vs previous month</div>
+          <div class="compare-grid">${trio(latest,'Latest')}${trio(prev,'Previous')}</div>`;
+        }
+        html += `</div>`;
+      }
+    }
+  } else if(subTab==='add'){
+    const date = pendingPhotoDate || today();
+    const wk = weekNum(date);
+    const valid = isPhotoWeek(date);
+    function slot(key, label){
+      const img = pendingPhotos[key];
+      if(img) return `<div class="upload-slot" onclick="triggerPhotoUpload('${key}')">
+        <img src="${img}" alt="${key}">
+        <button class="remove-btn" onclick="event.stopPropagation();removePendingPhoto('${key}')" aria-label="Remove">✕</button>
+      </div><div class="photo-trio-label">${label}</div>`;
+      return `<div class="upload-slot" onclick="triggerPhotoUpload('${key}')">
+        <div class="slot-icon">📷</div>
+        <div class="slot-label">${label}</div>
+      </div>`;
+    }
+    html += `<div class="card">
+      <div class="section-note">Photos every 4 weeks — weeks 1, 5, 9, 13… counting from your start date. Take front, side, and back in the same spot and lighting each time.</div>
+      <div class="fields-grid" style="grid-template-columns:200px;margin-bottom:.75rem">
+        <div class="field"><label>Date</label><input type="date" id="photo-date" value="${date}" oninput="updatePhotoDate(this.value)"></div>
+      </div>
+      <div style="margin-bottom:1rem">
+        ${valid?`<span class="badge badge-ok">✓ Photo week ${wk}</span>`:`<span class="badge badge-warn">Week ${wk} — not a photo week</span>`}
+      </div>
+      <div class="photo-upload-grid">
+        ${slot('front','Front')}${slot('side','Side')}${slot('back','Back')}
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="savePhotoSet()">Save photos</button>
+        <button class="btn" onclick="clearPendingPhotos()">Clear</button>
+      </div>
+    </div>`;
+  } else {
+    // timeline
+    const sp2 = [...sortedPhotos()].reverse();
+    if(!sp2.length){
+      html += `<div class="empty">No photo sets yet.</div>`;
+    } else {
+      html += `<div>`;
+      sp2.forEach(set=>{
+        const isFirst = set.date===sortedPhotos()[0].date;
+        html += `<div class="tl-item ${isFirst?'tl-start':''}">
+          <div class="tl-thumbs">
+            ${['front','side','back'].map(a=>set[a]?`<img class="tl-thumb" src="${set[a]}" alt="${a}">`:`<div class="tl-thumb-empty"></div>`).join('')}
+          </div>
+          <div class="tl-info">
+            <div class="tl-date">${fmtDate(set.date)}${isFirst?`<span class="badge badge-start">start</span>`:''}</div>
+            <div class="tl-sub">Week ${weekNum(set.date)}</div>
+          </div>
+          ${!isFirst?`<button class="del-btn" onclick="deletePhotoSet('${set.date}')" aria-label="Delete">🗑</button>`:''}
+        </div>`;
+      });
+      html += `</div>`;
+    }
+  }
+
+  document.getElementById('page-photos').innerHTML = html;
+}
+
+function setPhotoTab(t){ window._photoTab=t; renderPhotos(); }
+function updatePhotoDate(v){ pendingPhotoDate=v; renderPhotos(); }
+function triggerPhotoUpload(slot){
+  const map={front:'file-front',side:'file-side',back:'file-back'};
+  window._activePhotoSlot=slot;
+  document.getElementById(map[slot]).click();
+}
+function removePendingPhoto(slot){ pendingPhotos[slot]=null; renderPhotos(); }
+function clearPendingPhotos(){ pendingPhotos={front:null,side:null,back:null}; pendingPhotoDate=''; renderPhotos(); }
+
+function handlePhotoFile(e, slot){
+  const file=e.target.files[0]; if(!file) return;
+  const r=new FileReader();
+  r.onload=ev=>{ pendingPhotos[slot]=ev.target.result; renderPhotos(); };
+  r.readAsDataURL(file);
+  e.target.value='';
+}
+
+function savePhotoSet(){
+  const date=pendingPhotoDate||today();
+  if(!pendingPhotos.front&&!pendingPhotos.side&&!pendingPhotos.back){alert('Add at least one photo.');return;}
+  const entry={date,front:pendingPhotos.front,side:pendingPhotos.side,back:pendingPhotos.back};
+  const idx=photoSets.findIndex(p=>p.date===date);
+  if(idx>=0) photoSets[idx]=entry; else photoSets.push(entry);
+  savePhotos();
+  pendingPhotos={front:null,side:null,back:null}; pendingPhotoDate='';
+  alert('Photo set saved!');
+  window._photoTab='compare'; showPage('photos');
+}
+
+function deletePhotoSet(date){
+  if(!confirm('Delete photo set for '+fmtDate(date)+'?')) return;
+  photoSets=photoSets.filter(p=>p.date!==date); savePhotos(); renderPhotos();
+}
+
+// ─── Charts ────────────────────────────────────────────────
+function renderCharts(){
+  const s = sorted();
+  const labels = s.map(e=>fmtDate(e.date));
+  const chartDefs = [
+    {key:'weight',label:'Weight (kg)',color:'#185FA5',dash:[]},
+    {key:'bodyFat',label:'Body fat (%)',color:'#D85A30',dash:[6,4]},
+    {key:'waist',label:'Waist (cm)',color:'#3B6D11',dash:[3,3]},
+    {key:'leanMass',label:'Lean mass (kg)',color:'#534AB7',dash:[8,3]},
+  ];
+  const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
+  const gridC = isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.05)';
+  const textC = isDark?'#9e9c97':'#6b6a65';
+
+  let legendHtml = `<div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:10px;font-size:12px;color:var(--muted)">`;
+  chartDefs.forEach(cd=>{
+    legendHtml+=`<span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:18px;border-top:2px ${cd.dash.length?'dashed':'solid'} ${cd.color}"></span>${cd.label}</span>`;
+  });
+  legendHtml += `</div>`;
+
+  document.getElementById('page-charts').innerHTML = `<div class="card">${legendHtml}<div class="chart-wrap"><canvas id="mainChart"></canvas></div></div>`;
+
+  if(chartInst){ chartInst.destroy(); chartInst=null; }
+  chartInst = new Chart(document.getElementById('mainChart'),{
+    type:'line',
+    data:{
+      labels,
+      datasets: chartDefs.map(cd=>({
+        label:cd.label,
+        data:s.map(e=>e[cd.key]??null),
+        borderColor:cd.color,
+        borderDash:cd.dash,
+        backgroundColor:'transparent',
+        tension:0.3,
+        pointRadius:s.length>15?2:4,
+        spanGaps:true
+      }))
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false}},
+      scales:{
+        x:{ticks:{color:textC,maxTicksLimit:8,maxRotation:30},grid:{color:gridC}},
+        y:{ticks:{color:textC},grid:{color:gridC}}
+      }
+    }
+  });
+}
+
+// ─── History ───────────────────────────────────────────────
+function renderHistory(){
+  const s = [...sorted()].reverse();
+  let html = `<div class="entry-list">`;
+  s.forEach(e=>{
+    const isFirst=e.date===sorted()[0].date;
+    html+=`<div class="entry-row">
+      <div class="entry-date">${fmtDate(e.date)}${isFirst?`<span class="badge badge-start">start</span>`:''}</div>
+      <div class="entry-tags">`;
+    FIELDS.forEach(f=>{ if(e[f.key]!=null) html+=`<span class="tag">${f.label}: ${e[f.key]}${f.unit}</span>`; });
+    html+=`</div>
+      ${!isFirst?`<button class="del-btn" onclick="deleteEntry('${e.date}')" aria-label="Delete">🗑</button>`:''}
+    </div>`;
+  });
+  html+=`</div>`;
+  document.getElementById('page-history').innerHTML = html;
+}
+
+function deleteEntry(date){
+  if(!confirm('Delete entry for '+fmtDate(date)+'?')) return;
+  entries=entries.filter(e=>e.date!==date); saveEntries(); render();
+}
+
+// ─── Init ──────────────────────────────────────────────────
+document.getElementById('header-date').textContent = new Date().toLocaleDateString('en-ZA',{weekday:'short',day:'numeric',month:'long',year:'numeric'});
+document.getElementById('file-front').addEventListener('change',e=>handlePhotoFile(e,'front'));
+document.getElementById('file-side').addEventListener('change',e=>handlePhotoFile(e,'side'));
+document.getElementById('file-back').addEventListener('change',e=>handlePhotoFile(e,'back'));
+
+loadAll();
+render();
+</script>
+</body>
+</html>
